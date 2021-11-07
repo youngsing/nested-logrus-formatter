@@ -59,6 +59,10 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	// output buffer
 	b := &bytes.Buffer{}
 
+	if !f.NoColors {
+		fmt.Fprint(b, levelColor)
+	}
+
 	// write time
 	b.WriteString(entry.Time.Format(timestampFormat))
 
@@ -72,10 +76,6 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	if f.CallerFirst {
 		f.writeCaller(b, entry)
-	}
-
-	if !f.NoColors {
-		fmt.Fprintf(b, "\x1b[%dm", levelColor)
 	}
 
 	b.WriteString(" [")
@@ -128,7 +128,7 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 func (f *Formatter) writeCaller(b *bytes.Buffer, entry *logrus.Entry) {
 	if entry.HasCaller() {
 		if f.CustomCallerFormatter != nil {
-			fmt.Fprintf(b, f.CustomCallerFormatter(entry.Caller))
+			fmt.Fprint(b, f.CustomCallerFormatter(entry.Caller))
 		} else {
 			fmt.Fprintf(
 				b,
@@ -196,13 +196,19 @@ func (f *Formatter) writeField(b *bytes.Buffer, entry *logrus.Entry, field strin
 }
 
 const (
-	colorRed    = 31
-	colorYellow = 33
-	colorBlue   = 36
-	colorGray   = 37
+	colorBlack     = "\u001b[40;1m"
+	colorRed       = "\u001b[41;1m"
+	colorGreen     = "\u001b[42;1m"
+	colorYellow    = "\u001b[43;1m"
+	colorBlue      = "\u001b[44;1m"
+	colorMagenta   = "\u001b[45;1m"
+	colorCyan      = "\u001b[46;1m"
+	colorWhite     = "\u001b[47;1m"
+	colorGray      = "\u001b[48;5;8;1m"
+	colorLightGray = "\u001b[48;5;245;1m"
 )
 
-func getColorByLevel(level logrus.Level) int {
+func getColorByLevel(level logrus.Level) string {
 	switch level {
 	case logrus.DebugLevel, logrus.TraceLevel:
 		return colorGray
@@ -211,6 +217,6 @@ func getColorByLevel(level logrus.Level) int {
 	case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
 		return colorRed
 	default:
-		return colorBlue
+		return colorCyan
 	}
 }
