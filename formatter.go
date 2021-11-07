@@ -49,18 +49,7 @@ type Formatter struct {
 	// EnableCustomColor - use custom color value
 	EnableCustomColor bool
 
-	// CustomColors - User-defined colors. eg.
-	/*
-		CustomColors: map[logrus.Level]string{
-			logrus.PanicLevel: "\u001b[41;1m",
-			logrus.FatalLevel: "\u001b[41;1m",
-			logrus.ErrorLevel: "\u001b[41;1m",
-			logrus.WarnLevel:  "\u001b[43;1m",
-			logrus.InfoLevel:  "\u001b[46;1m",
-			logrus.DebugLevel: "\u001b[48;5;245;1m",
-			logrus.TraceLevel: "\u001b[48;5;8;1m",
-		}
-	*/
+	// CustomColors - User-defined colors. default: `defaultCustomColors`, defined at the end of the file
 	CustomColors map[logrus.Level]string
 }
 
@@ -76,20 +65,15 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	b := &bytes.Buffer{}
 
 	if !f.NoColors && f.EnableCustomColor {
-		if f.EnableCustomColor {
-			customColors := f.CustomColors
-			if len(customColors) == 0 {
-				customColors = defaultCustomColors
-			}
-			levelColor := customColors[entry.Level]
-			if len(levelColor) == 0 {
-				levelColor = defaultCustomColors[logrus.InfoLevel]
-			}
-			fmt.Fprintf(b, "%s", levelColor)
-		} else {
-			levelColor := getColorByLevel(entry.Level)
-			fmt.Fprintf(b, "\x1b[%dm", levelColor)
+		customColors := f.CustomColors
+		if len(customColors) == 0 {
+			customColors = defaultCustomColors
 		}
+		levelColor := customColors[entry.Level]
+		if len(levelColor) == 0 {
+			levelColor = defaultCustomColors[logrus.InfoLevel]
+		}
+		fmt.Fprintf(b, "%s", levelColor)
 	}
 
 	// write time
