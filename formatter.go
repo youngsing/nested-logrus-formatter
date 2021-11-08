@@ -46,10 +46,13 @@ type Formatter struct {
 	// CustomCallerFormatter - set custom formatter for caller info
 	CustomCallerFormatter func(*runtime.Frame) string
 
-	// EnableCustomColor - use custom color value
-	EnableCustomColor bool
+	// enable timestamp colorization
+	ColorizeTimestamp bool
 
-	// CustomColors - User-defined colors. default: `defaultCustomColors`, defined at the end of the file
+	// use custom color values
+	UseCustomColors bool
+
+	// user-defined colors. default: `defaultCustomColors`, defined at the end of the file
 	CustomColors map[logrus.Level]string
 }
 
@@ -64,16 +67,14 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 	// output buffer
 	b := &bytes.Buffer{}
 
-	if !f.NoColors && f.EnableCustomColor {
-		customColors := f.CustomColors
-		if len(customColors) == 0 {
-			customColors = defaultCustomColors
+	if !f.NoColors && f.ColorizeTimestamp {
+		if f.UseCustomColors {
+			levelColor := getCustomColorByLevel(f.CustomColors, entry.Level)
+			fmt.Fprintf(b, "%s", levelColor)
+		} else {
+			levelColor := getColorByLevel(entry.Level)
+			fmt.Fprintf(b, "\x1b[%dm", levelColor)
 		}
-		levelColor := customColors[entry.Level]
-		if len(levelColor) == 0 {
-			levelColor = defaultCustomColors[logrus.InfoLevel]
-		}
-		fmt.Fprintf(b, "%s", levelColor)
 	}
 
 	// write time
@@ -91,9 +92,14 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		f.writeCaller(b, entry)
 	}
 
-	if !f.NoColors && !f.EnableCustomColor {
-		levelColor := getColorByLevel(entry.Level)
-		fmt.Fprintf(b, "\x1b[%dm", levelColor)
+	if !f.NoColors && !f.ColorizeTimestamp {
+		if f.UseCustomColors {
+			levelColor := getCustomColorByLevel(f.CustomColors, entry.Level)
+			fmt.Fprintf(b, "%s", levelColor)
+		} else {
+			levelColor := getColorByLevel(entry.Level)
+			fmt.Fprintf(b, "\x1b[%dm", levelColor)
+		}
 	}
 
 	b.WriteString(" [")
@@ -119,12 +125,12 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		f.writeOrderedFields(b, entry)
 	}
 
-	if f.NoFieldsSpace {
-		b.WriteString(" ")
-	}
-
 	if !f.NoColors && !f.NoFieldsColors {
 		b.WriteString("\x1b[0m")
+	}
+
+	if f.NoFieldsSpace {
+		b.WriteString(" ")
 	}
 
 	// write message
@@ -234,11 +240,22 @@ func getColorByLevel(level logrus.Level) int {
 }
 
 var defaultCustomColors = map[logrus.Level]string{
-	logrus.PanicLevel: "\u001b[41;1m",
-	logrus.FatalLevel: "\u001b[41;1m",
-	logrus.ErrorLevel: "\u001b[41;1m",
-	logrus.WarnLevel:  "\u001b[43;1m",
-	logrus.InfoLevel:  "\u001b[46;1m",
-	logrus.DebugLevel: "\u001b[48;5;245;1m",
-	logrus.TraceLevel: "\u001b[48;5;8;1m",
+	logrus.PanicLevel: "\u001b[41;1m",       // red
+	logrus.FatalLevel: "\u001b[41;1m",       // red
+	logrus.ErrorLevel: "\u001b[41;1m",       // red
+	logrus.WarnLevel:  "\u001b[43;1m",       // yellow
+	logrus.InfoLevel:  "\u001b[46;1m",       // cyan
+	logrus.DebugLevel: "\u001b[48;5;245;1m", // light gray
+	logrus.TraceLevel: "\u001b[48;5;8;1m",   // gray
+}
+
+func getCustomColorByLevel(customColors map[logrus.Level]string, level logrus.Level) string {
+	if len(customColors) == 0 {
+		customColors = defaultCustomColors
+	}
+	levelColor := customColors[level]
+	if len(levelColor) == 0 {
+		levelColor = defaultCustomColors[logrus.InfoLevel]
+	}
+	return levelColor
 }
